@@ -1,4 +1,5 @@
 .pio
 .pioenvs
+.cache/*
 .piolibdeps
 venv/*
