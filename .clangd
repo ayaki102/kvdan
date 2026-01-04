@@ -1,0 +1,22 @@
+CompileFlags:
+  Add:
+    - "-I/home/itz_4ura/.platformio/packages/framework-arduinoespressif8266/cores/esp8266"
+    - "-I/home/itz_4ura/.platformio/packages/framework-arduinoespressif8266/tools/sdk/include"
+    - "-I/home/itz_4ura/.platformio/packages/toolchain-xtensa/xtensa-lx106-elf/include/c++/10.3.0"
+    - "-I/home/itz_4ura/.platformio/packages/toolchain-xtensa/xtensa-lx106-elf/include/c++/10.3.0/xtensa-lx106-elf"
+    - "-I/home/itz_4ura/.platformio/packages/toolchain-xtensa/xtensa-lx106-elf/include"
+    - "-Iinclude"
+    - "-Isrc"
+    - "-DESP8266"
+    - "-DARDUINO=10607"
+    - "-DARDUINO_ESP8266_NODEMCU"
+    - "-DARDUINO_ARCH_ESP8266"
+  Remove:
+    - "-m*"
+    - "-f*"
+
+Diagnostics:
+  Suppress: '*'
+  
+Index:
+  Background: Build
