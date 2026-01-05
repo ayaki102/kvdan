@@ -10,7 +10,7 @@ Adafruit_SH1106G display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 unsigned long lastDebounceTime = 0;
 const unsigned long debounceDelay = 200;
 
-const bool debug = true;
+const bool debug = false;
 
 // Navigation state - supports nested menus
 struct MenuState {
@@ -192,9 +192,87 @@ void slideAnimation(void (*drawCurrent)(int), void (*drawPrevious)(int),
 
 // ===== MENU NAVIGATION =====
 
+void submenuEnterAnimation() {
+  int centerX = SCREEN_WIDTH / 2;
+  int centerY = SCREEN_HEIGHT / 2;
+  
+  // explosive zoom + particles
+  for (int frame = 0; frame < 12; frame++) {
+    display.clearDisplay();
+    
+    // expanding circle ripples
+    int rippleRadius = frame * 12;
+    if (rippleRadius < SCREEN_WIDTH) {
+      display.drawCircle(centerX, centerY, rippleRadius, SH110X_WHITE);
+      if (frame > 2) {
+        display.drawCircle(centerX, centerY, rippleRadius - 8, SH110X_WHITE);
+      }
+    }
+    
+    // corner brackets explode outward
+    int cornerDist = frame * 8;
+    int cornerSize = 6;
+    
+    // top-left
+    display.drawLine(cornerDist, cornerDist, cornerDist + cornerSize, cornerDist, SH110X_WHITE);
+    display.drawLine(cornerDist, cornerDist, cornerDist, cornerDist + cornerSize, SH110X_WHITE);
+    
+    // top-right
+    display.drawLine(SCREEN_WIDTH - cornerDist, cornerDist, 
+                     SCREEN_WIDTH - cornerDist - cornerSize, cornerDist, SH110X_WHITE);
+    display.drawLine(SCREEN_WIDTH - cornerDist, cornerDist, 
+                     SCREEN_WIDTH - cornerDist, cornerDist + cornerSize, SH110X_WHITE);
+    
+    // bottom-left
+    display.drawLine(cornerDist, SCREEN_HEIGHT - cornerDist, 
+                     cornerDist + cornerSize, SCREEN_HEIGHT - cornerDist, SH110X_WHITE);
+    display.drawLine(cornerDist, SCREEN_HEIGHT - cornerDist, 
+                     cornerDist, SCREEN_HEIGHT - cornerDist - cornerSize, SH110X_WHITE);
+    
+    // bottom-right
+    display.drawLine(SCREEN_WIDTH - cornerDist, SCREEN_HEIGHT - cornerDist, 
+                     SCREEN_WIDTH - cornerDist - cornerSize, SCREEN_HEIGHT - cornerDist, SH110X_WHITE);
+    display.drawLine(SCREEN_WIDTH - cornerDist, SCREEN_HEIGHT - cornerDist, 
+                     SCREEN_WIDTH - cornerDist, SCREEN_HEIGHT - cornerDist - cornerSize, SH110X_WHITE);
+    
+    // particle burst
+    for (int i = 0; i < 8; i++) {
+      float angle = (i * 45) * (PI / 180.0);
+      int particleDist = frame * 6;
+      int px = centerX + cos(angle) * particleDist;
+      int py = centerY + sin(angle) * particleDist;
+      
+      if (px >= 0 && px < SCREEN_WIDTH && py >= 0 && py < SCREEN_HEIGHT) {
+        display.fillCircle(px, py, 2, SH110X_WHITE);
+        // trailing particles
+        if (frame > 3) {
+          int px2 = centerX + cos(angle) * (particleDist - 12);
+          int py2 = centerY + sin(angle) * (particleDist - 12);
+          if (px2 >= 0 && px2 < SCREEN_WIDTH && py2 >= 0 && py2 < SCREEN_HEIGHT) {
+            display.drawPixel(px2, py2, SH110X_WHITE);
+          }
+        }
+      }
+    }
+    
+    display.display();
+    delay(40);
+  }
+  
+  // flash effect
+  display.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, SH110X_WHITE);
+  display.display();
+  delay(50);
+  display.clearDisplay();
+  display.display();
+  delay(30);
+}
+
 void enterSubmenu(int selection) {
   currentMenu->inSubmenu = true;
   currentMenu->selected = selection;
+  
+  submenuEnterAnimation();
   
   // reset submenu-specific state
   scanComplete = false;
@@ -466,22 +544,187 @@ void scanAnimation() {
 }
 
 void startupAnimation() {
-  for (int frame = 0; frame < 8; frame++) {
+  int centerX = SCREEN_WIDTH / 2;
+  int centerY = SCREEN_HEIGHT / 2;
+  
+  // sleeping hamster wakes up
+  for (int frame = 0; frame < 22; frame++) {
     display.clearDisplay();
-
-    display.drawBitmap(20, 50 - frame * 4, heartBitmap, 8, 8, SH110X_WHITE);
-    display.drawBitmap(90, 55 - frame * 3, heartBitmap, 8, 8, SH110X_WHITE);
-    display.drawBitmap(60, 52 - frame * 5, heartBitmap, 8, 8, SH110X_WHITE);
-
-    display.setTextSize(1);
-    display.setCursor(28, 5);
-    display.print(F("kajdanek :3"));
-
+    
+    if (frame < 6) {
+      // hamster sleeping - curled up ball
+      int breathe = abs(sin(frame * 1.2)) * 2;
+      
+      // body (curled)
+      display.fillCircle(centerX, centerY + breathe, 10, SH110X_WHITE);
+      display.fillCircle(centerX - 3, centerY - 3 + breathe, 6, SH110X_WHITE);
+      
+      // closed eyes zzz
+      display.drawLine(centerX - 2, centerY - 2 + breathe, centerX - 4, centerY - 2 + breathe, SH110X_BLACK);
+      display.drawLine(centerX + 2, centerY - 2 + breathe, centerX + 4, centerY - 2 + breathe, SH110X_BLACK);
+      
+      // zzz floating up
+      if (frame > 2) {
+        display.setTextSize(1);
+        display.setCursor(centerX + 15, centerY - 12 - frame);
+        display.print("z");
+      }
+      
+    } else if (frame < 12) {
+      // waking up - stretching
+      int stretchPhase = frame - 6;
+      
+      // body starts uncurling
+      display.fillCircle(centerX, centerY, 9, SH110X_WHITE);
+      display.fillCircle(centerX - 4, centerY - 4, 5, SH110X_WHITE);
+      
+      // ears pop up
+      if (stretchPhase > 2) {
+        display.fillCircle(centerX - 7, centerY - 10, 3, SH110X_WHITE);
+        display.fillCircle(centerX - 1, centerY - 11, 3, SH110X_WHITE);
+      }
+      
+      // eyes opening
+      if (stretchPhase > 1) {
+        display.drawPixel(centerX - 3, centerY - 3, SH110X_BLACK);
+        display.drawPixel(centerX + 1, centerY - 3, SH110X_BLACK);
+      }
+      
+      // little paws stretching out
+      if (stretchPhase > 4) {
+        display.fillCircle(centerX - 12, centerY + 3, 2, SH110X_WHITE);
+        display.fillCircle(centerX + 8, centerY + 3, 2, SH110X_WHITE);
+      }
+      
+    } else {
+      // fully awake and happy
+      int wigglePhase = frame - 12;
+      int wiggle = (wigglePhase % 2 == 0) ? 1 : -1;
+      
+      // body
+      display.fillCircle(centerX + wiggle, centerY, 9, SH110X_WHITE);
+      display.fillCircle(centerX - 4 + wiggle, centerY - 4, 5, SH110X_WHITE);
+      
+      // ears
+      display.fillCircle(centerX - 7 + wiggle, centerY - 10, 3, SH110X_WHITE);
+      display.fillCircle(centerX - 1 + wiggle, centerY - 11, 3, SH110X_WHITE);
+      
+      // happy eyes (^_^)
+      display.drawLine(centerX - 4 + wiggle, centerY - 3, centerX - 2 + wiggle, centerY - 3, SH110X_BLACK);
+      display.drawLine(centerX + wiggle, centerY - 3, centerX + 2 + wiggle, centerY - 3, SH110X_BLACK);
+      
+      // nose
+      display.drawPixel(centerX - 1 + wiggle, centerY - 1, SH110X_BLACK);
+      
+      // paws
+      display.fillCircle(centerX - 10 + wiggle, centerY + 5, 2, SH110X_WHITE);
+      display.fillCircle(centerX + 6 + wiggle, centerY + 5, 2, SH110X_WHITE);
+      
+      // cheeks
+      display.fillCircle(centerX - 8 + wiggle, centerY, 3, SH110X_WHITE);
+      display.fillCircle(centerX + 4 + wiggle, centerY, 3, SH110X_WHITE);
+      
+      // hearts appear
+      if (wigglePhase > 4) {
+        display.drawBitmap(centerX - 25, centerY - 8, heartBitmap, 8, 8, SH110X_WHITE);
+        display.drawBitmap(centerX + 15, centerY - 8, heartBitmap, 8, 8, SH110X_WHITE);
+      }
+      
+      // sparkle effect
+      if (wigglePhase > 6) {
+        display.drawPixel(centerX - 20, centerY - 15, SH110X_WHITE);
+        display.drawPixel(centerX + 18, centerY - 15, SH110X_WHITE);
+        display.drawPixel(centerX, centerY - 20, SH110X_WHITE);
+      }
+    }
+    
     display.display();
-    delay(180);
+    delay(frame < 6 ? 200 : (frame < 12 ? 120 : 100));
   }
-
+  
   delay(300);
+  
+  // text reveals letter by letter from center outward
+  const char* text = "kajdanek :3";
+  int textLen = strlen(text);
+  int16_t x1, y1;
+  uint16_t w, h;
+  display.setTextSize(1);
+  display.getTextBounds(text, 0, 0, &x1, &y1, &w, &h);
+  int textX = (SCREEN_WIDTH - w) / 2;
+  int textY = centerY - 4;
+  
+  // sparkle burst before text
+  for (int burst = 0; burst < 8; burst++) {
+    display.clearDisplay();
+    
+    for (int i = 0; i < 12; i++) {
+      float angle = (i * 30) * (PI / 180.0);
+      int dist = burst * 8;
+      int px = centerX + cos(angle) * dist;
+      int py = centerY + sin(angle) * dist;
+      
+      if (px >= 0 && px < SCREEN_WIDTH && py >= 0 && py < SCREEN_HEIGHT) {
+        display.fillCircle(px, py, 1, SH110X_WHITE);
+      }
+    }
+    
+    display.display();
+    delay(35);
+  }
+  
+  // letters appear from center outward with pop effect
+  int centerChar = textLen / 2;
+  for (int reveal = 0; reveal <= centerChar; reveal++) {
+    display.clearDisplay();
+    
+    // draw revealed characters with bounce
+    int bounce = (reveal == 0) ? 0 : 2;
+    
+    for (int i = 0; i < textLen; i++) {
+      int distFromCenter = abs(i - centerChar);
+      if (distFromCenter <= reveal) {
+        int charX = textX + i * 6;
+        int charY = (distFromCenter == reveal) ? textY - bounce : textY;
+        display.setCursor(charX, charY);
+        display.print(text[i]);
+      }
+    }
+    
+    // hearts pop in with text
+    if (reveal > centerChar - 2) {
+      display.drawBitmap(textX - 12, textY, heartBitmap, 8, 8, SH110X_WHITE);
+      display.drawBitmap(textX + w + 4, textY, heartBitmap, 8, 8, SH110X_WHITE);
+    }
+    
+    display.display();
+    delay(80);
+  }
+  
+  // final pulse effect
+  for (int pulse = 0; pulse < 3; pulse++) {
+    display.clearDisplay();
+    
+    if (pulse % 2 == 0) {
+      display.setCursor(textX, textY);
+      display.print(text);
+      display.drawBitmap(textX - 12, textY, heartBitmap, 8, 8, SH110X_WHITE);
+      display.drawBitmap(textX + w + 4, textY, heartBitmap, 8, 8, SH110X_WHITE);
+    }
+    
+    display.display();
+    delay(150);
+  }
+  
+  // final display
+  display.clearDisplay();
+  display.setCursor(textX, textY);
+  display.print(text);
+  display.drawBitmap(textX - 12, textY, heartBitmap, 8, 8, SH110X_WHITE);
+  display.drawBitmap(textX + w + 4, textY, heartBitmap, 8, 8, SH110X_WHITE);
+  display.display();
+  
+  delay(500);
   display.clearDisplay();
   display.display();
 }
