@@ -29,7 +29,7 @@ MenuState *currentMenu = &rootMenu;
 int networkCount = 0;
 int currentNetwork = 0;
 bool scanComplete = false;
-string selectedAP;
+String selectedAP = "";
 
 // ===== PROTOTYPES =====
 
@@ -167,7 +167,8 @@ void drawMenu() {
         display.clearDisplay();
 
         drawHeader("strxless", currentMenu->index + 1, MENU_SIZE);
-        drawDecorativeLine(); // current item int16_t x1, y1;
+        drawDecorativeLine(); // current item
+        int16_t x1, y1;
         uint16_t w, h;
         display.getTextBounds(menuItems[currentMenu->index], 0, 0, &x1, &y1, &w,
                               &h);
@@ -303,32 +304,35 @@ void handleWiFiScan() {
         slideRight = false;
     }
 
-    if (buttonPressed(BTN_OK))
+    if (buttonPressed(BTN_OK)) {
+        selectedAP = WiFi.SSID(currentNetwork);
+        Serial.print(selectedAP);
+    }
 
-        // slide between networks
-        if (needsAnimation && networkCount > 0) {
-            for (int offset = 0; offset <= SCREEN_WIDTH; offset += 16) {
-                display.clearDisplay();
+    // slide between networks
+    if (needsAnimation && networkCount > 0) {
+        for (int offset = 0; offset <= SCREEN_WIDTH; offset += 16) {
+            display.clearDisplay();
 
-                drawHeader("WiFi", currentNetwork + 1, networkCount);
-                drawDecorativeLine();
+            drawHeader("WiFi", currentNetwork + 1, networkCount);
+            drawDecorativeLine();
 
-                int currentX = slideRight ? (-SCREEN_WIDTH + offset)
-                                          : (SCREEN_WIDTH - offset);
-                if (currentX > -SCREEN_WIDTH && currentX < SCREEN_WIDTH) {
-                    drawWiFiNetwork(currentX, currentNetwork);
-                }
-
-                int prevX = slideRight ? offset : -offset;
-                if (prevX > -SCREEN_WIDTH && prevX < SCREEN_WIDTH) {
-                    drawWiFiNetwork(prevX, lastNetwork);
-                }
-
-                drawNavigationDots();
-                display.display();
-                delay(20);
+            int currentX =
+                slideRight ? (-SCREEN_WIDTH + offset) : (SCREEN_WIDTH - offset);
+            if (currentX > -SCREEN_WIDTH && currentX < SCREEN_WIDTH) {
+                drawWiFiNetwork(currentX, currentNetwork);
             }
+
+            int prevX = slideRight ? offset : -offset;
+            if (prevX > -SCREEN_WIDTH && prevX < SCREEN_WIDTH) {
+                drawWiFiNetwork(prevX, lastNetwork);
+            }
+
+            drawNavigationDots();
+            display.display();
+            delay(20);
         }
+    }
 
     // final frame
     display.clearDisplay();

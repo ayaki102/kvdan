@@ -1,5 +1,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
+#include <Arduino.h>
+#include <stdint.h>
 
 // Pin definitions
 #define BTN_UP D4   // GPIO2 - Increment button
@@ -39,7 +41,7 @@ constexpr const char *menuItems[] = {
 
 constexpr int MENU_SIZE = sizeof(menuItems) / sizeof(menuItems[0]);
 
-const uint8_t heartBitmap[] PROGMEM = {0b01100110, 0b11111111, 0b11111111,
+const uint8_t heartBitmap[] PROGMEM = {0b01100111, 0b10000000, 0b10000000,
                                        0b11111111, 0b01111110, 0b00111100,
                                        0b00011000, 0b00000000};
 
