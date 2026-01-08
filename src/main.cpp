@@ -31,6 +31,10 @@ int currentNetwork = 0;
 bool scanComplete = false;
 String selectedAP = "";
 
+// this is just usefull
+bool needsAnimation = false;
+bool slideRight = false;
+
 // ===== PROTOTYPES =====
 
 void drawMenu();
@@ -38,6 +42,7 @@ void drawSubmenu();
 bool buttonPressed(uint8_t pin);
 void startupAnimation();
 void handleWiFiScan();
+void handleDeauth();
 
 void enterSubmenu(int selection);
 void exitSubmenu();
@@ -166,8 +171,8 @@ void drawMenu() {
     for (int offset = 0; offset <= SCREEN_WIDTH; offset += 16) {
         display.clearDisplay();
 
-        drawHeader("strxless", currentMenu->index + 1, MENU_SIZE);
-        drawDecorativeLine(); // current item
+        drawHeader("kajdanecek :3", currentMenu->index + 1, MENU_SIZE);
+        // drawDecorativeLine(); // current item
         int16_t x1, y1;
         uint16_t w, h;
         display.getTextBounds(menuItems[currentMenu->index], 0, 0, &x1, &y1, &w,
@@ -203,7 +208,7 @@ void drawMenu() {
     // final frame
     display.clearDisplay();
     drawHeader("kajdanecek :3", currentMenu->index + 1, MENU_SIZE);
-    drawDecorativeLine();
+    // drawDecorativeLine();
 
     int16_t x1, y1;
     uint16_t w, h;
@@ -233,6 +238,7 @@ void drawSubmenu() {
         break;
 
     case deauth_id:
+        handleDeauth();
         break;
     // template for nested submenus
     case 100: {
@@ -277,79 +283,139 @@ void drawWiFiNetwork(int xOffset, int networkIdx) {
 // FEATUREEEEEEEEEEEEES
 
 void handleWiFiScan() {
-    static int lastNetwork = 0;
+    static bool showConfirmation = false;
+    static unsigned long confirmationTime = 0;
+    static unsigned long scrollTime = 0;
+    static int scrollOffset = 0;
 
     if (!scanComplete) {
         scanAnimation();
         networkCount = WiFi.scanNetworks();
         scanComplete = true;
         currentNetwork = 0;
-        lastNetwork = 0;
     }
-
-    bool needsAnimation = false;
-    bool slideRight = false;
-
     if (buttonPressed(BTN_UP)) {
-        lastNetwork = currentNetwork;
         currentNetwork = (currentNetwork - 1 + networkCount) % networkCount;
-        needsAnimation = true;
-        slideRight = true;
+        showConfirmation = false;
+        scrollOffset = 0;
+        scrollTime = millis();
     }
-
     if (buttonPressed(BTN_DOWN)) {
-        lastNetwork = currentNetwork;
         currentNetwork = (currentNetwork + 1) % networkCount;
-        needsAnimation = true;
-        slideRight = false;
+        showConfirmation = false;
+        scrollOffset = 0;
+        scrollTime = millis();
     }
-
     if (buttonPressed(BTN_OK)) {
         selectedAP = WiFi.SSID(currentNetwork);
         Serial.print(selectedAP);
+        showConfirmation = true;
+        confirmationTime = millis();
+        scrollOffset = 0;
+        scrollTime = millis();
+    }
+    // check if confirmation should disappear
+    if (showConfirmation && (millis() - confirmationTime > 1500)) {
+        showConfirmation = false;
+        scrollOffset = 0;
+        scrollTime = millis();
     }
 
-    // slide between networks
-    if (needsAnimation && networkCount > 0) {
-        for (int offset = 0; offset <= SCREEN_WIDTH; offset += 16) {
-            display.clearDisplay();
-
-            drawHeader("WiFi", currentNetwork + 1, networkCount);
-            drawDecorativeLine();
-
-            int currentX =
-                slideRight ? (-SCREEN_WIDTH + offset) : (SCREEN_WIDTH - offset);
-            if (currentX > -SCREEN_WIDTH && currentX < SCREEN_WIDTH) {
-                drawWiFiNetwork(currentX, currentNetwork);
-            }
-
-            int prevX = slideRight ? offset : -offset;
-            if (prevX > -SCREEN_WIDTH && prevX < SCREEN_WIDTH) {
-                drawWiFiNetwork(prevX, lastNetwork);
-            }
-
-            drawNavigationDots();
-            display.display();
-            delay(20);
-        }
+    if (millis() - scrollTime > 300) { // Scroll every 300ms
+        scrollTime = millis();
+        scrollOffset++;
     }
 
-    // final frame
     display.clearDisplay();
+    if (showConfirmation) {
+        display.setTextSize(1);
+        int16_t x1, y1;
+        uint16_t w, h;
+        display.getTextBounds("WYBRANO", 0, 0, &x1, &y1, &w, &h);
+        display.setCursor((SCREEN_WIDTH - w) / 2, 20);
+        display.print("WYBRANO");
 
-    if (networkCount == 0) {
-        drawHeader("Brak WiFi");
-        drawDecorativeLine();
+        display.setTextSize(1);
+        display.getTextBounds(selectedAP.c_str(), 0, 0, &x1, &y1, &w, &h);
 
-        display.setCursor(20, 28);
-        display.println("brak sieci...");
-        display.setCursor(48, 42);
-        display.print("(>_<)");
+        if (w <= SCREEN_WIDTH - 8) {
+            display.setCursor((SCREEN_WIDTH - w) / 2, 42);
+            display.print(selectedAP);
+        } else {
+            String scrollText = selectedAP + "   " + selectedAP;
+            int charWidth = 6;
+            int maxScroll = selectedAP.length() + 3;
+            int currentOffset = scrollOffset % maxScroll;
+
+            display.setCursor(4 - (currentOffset * charWidth), 42);
+            display.print(scrollText);
+        }
+
+        display.setTextSize(1);
+        display.display();
     } else {
-        drawHeader("WiFi", currentNetwork + 1, networkCount);
-        drawDecorativeLine();
-        drawWiFiNetwork(0, currentNetwork);
-        drawNavigationDots();
+        // Normal WiFi scan display
+        if (networkCount == 0) {
+            drawHeader("Brak WiFi");
+            // drawDecorativeLine();
+            display.setCursor(20, 28);
+            display.println("brak sieci...");
+            display.setCursor(48, 42);
+            display.print("(>_<)");
+        } else {
+            drawHeader("WiFi", currentNetwork + 1, networkCount);
+            // drawDecorativeLine();
+            drawWiFiNetwork(0, currentNetwork);
+            drawNavigationDots();
+        }
+        display.display();
+    }
+}
+
+void handleDeauth() {
+    display.clearDisplay();
+    drawHeader("selectedAP");
+    // drawDecorativeLine();
+
+    int16_t x1, y1;
+    uint16_t w, h;
+    display.getTextBounds(selectedAP, 0, 0, &x1, &y1, &w, &h);
+
+    if (w <= SCREEN_WIDTH - 8) {
+        int x = (SCREEN_WIDTH - w) / 2;
+        int padding = 4;
+        drawSelectionBox(x - padding, 30, w + padding * 2, h + 4);
+        display.setCursor(x, 32);
+        display.print(selectedAP);
+    } else {
+        String apName = String(selectedAP);
+        int maxWidth = SCREEN_WIDTH - 12;
+        int cursorY = 26;
+        int lineHeight = h + 2;
+        String line = "";
+
+        for (size_t i = 0; i < apName.length(); i++) {
+            String testLine = line + apName.charAt(i);
+            display.getTextBounds(testLine.c_str(), 0, 0, &x1, &y1, &w, &h);
+
+            if (w > maxWidth && line.length() > 0) {
+                display.getTextBounds(line.c_str(), 0, 0, &x1, &y1, &w, &h);
+                int x = (SCREEN_WIDTH - w) / 2;
+                display.setCursor(x, cursorY);
+                display.print(line);
+                cursorY += lineHeight;
+                line = String(apName.charAt(i));
+            } else {
+                line = testLine;
+            }
+        }
+
+        if (line.length() > 0) {
+            display.getTextBounds(line.c_str(), 0, 0, &x1, &y1, &w, &h);
+            int x = (SCREEN_WIDTH - w) / 2;
+            display.setCursor(x, cursorY);
+            display.print(line);
+        }
     }
 
     display.display();

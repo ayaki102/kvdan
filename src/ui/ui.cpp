@@ -246,7 +246,7 @@ void scanAnimation() {
         display.print((frame * 100) / 15);
         display.print("%");
 
-        drawDecorativeLine();
+        // drawDecorativeLine();
 
         // bouncing dots
         int dotSpacing = 12;
